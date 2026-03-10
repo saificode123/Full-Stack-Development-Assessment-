@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from .models import Team, Task
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -17,3 +18,17 @@ class UserSerializer(serializers.ModelSerializer):
             password=validated_data['password']
         )
         return user
+
+
+class TeamSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Team
+        fields = '__all__'
+        # Security: The user cannot manually set these fields in the request
+        read_only_fields = ['creator', 'created_at']
+
+class TaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = '__all__'
+        read_only_fields = ['created_at']
