@@ -1,0 +1,23 @@
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables (Crucial for Security!)
+.env
+
+# Databases (Local only)
+db.sqlite3
+
+# IDE settings
+.vscode/
+.idea/
+
+# Static/Media files (usually ignored in favor of cloud storage)
+/static/
+/media/
