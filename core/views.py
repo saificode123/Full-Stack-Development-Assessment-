@@ -122,8 +122,27 @@ class TeamViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsTeamCreatorOrReadOnly]
     authentication_classes = [CsrfExemptSessionAuthentication]
 
+    def create(self, request, *args, **kwargs):
+        """Override create to add debugging"""
+        print(f"[DEBUG] POST /teams/ - User: {request.user}, Data: {request.data}")
+        print(f"[DEBUG] Auth: {request.auth}, Authenticated: {request.user.is_authenticated}")
+        try:
+            serializer = self.get_serializer(data=request.data)
+            print(f"[DEBUG] Serializer is_valid: {serializer.is_valid()}")
+            if not serializer.is_valid():
+                print(f"[DEBUG] Serializer errors: {serializer.errors}")
+            response = super().create(request, *args, **kwargs)
+            print(f"[DEBUG] Team created successfully: {response.data}")
+            return response
+        except Exception as e:
+            print(f"[DEBUG] Error creating team: {str(e)}")
+            import traceback
+            print(f"[DEBUG] Traceback: {traceback.format_exc()}")
+            raise
+
     def perform_create(self, serializer):
         # Automatically links the logged-in user as the creator of the team
+        print(f"[DEBUG] perform_create - Saving with creator: {self.request.user}")
         serializer.save(creator=self.request.user)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsTeamCreatorOrReadOnly])
