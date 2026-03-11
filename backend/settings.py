@@ -86,10 +86,13 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASE_URL = os.getenv('DATABASE_URL')
 
 if DATABASE_URL:
+    print(f"=== Using DATABASE_URL from environment ===")
+    print(f"=== DATABASE_URL: {DATABASE_URL[:50]}... ===")
     DATABASES = {
         'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
     }
 else:
+    print("=== Using local database settings ===")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
