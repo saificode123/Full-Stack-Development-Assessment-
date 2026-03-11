@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-r23a_l_*po@@z#4(8*k%5l(9qx7*=qmz$==721ml=&(u=3me9l
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -152,8 +152,14 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
 
+# ADD THIS TO TRUST REACT FOR POST REQUESTS
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
 CORS_ALLOW_CREDENTIALS = True # Required for Session/Cookie-based auth 
 
 # Security Practices 
 SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
