@@ -6,6 +6,17 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.authentication import SessionAuthentication
+
+# Custom authentication class that skips CSRF check
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    """
+    Override enforce_csrf to skip CSRF check for session authentication.
+    This is needed for APIs accessed from frontend frameworks that don't
+    handle CSRF tokens properly.
+    """
+    def enforce_csrf(self, request):
+        return  # Skip CSRF check
 
 # Local imports
 from .models import Team, Task
@@ -25,6 +36,10 @@ class RegisterView(APIView):
     """
     permission_classes = (permissions.AllowAny,)
 
+    def get(self, request):
+        # Return success to indicate endpoint is available (sets CSRF cookie)
+        return Response({'message': 'Register endpoint available'}, status=status.HTTP_200_OK)
+
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():  
@@ -40,6 +55,10 @@ class LoginView(APIView):
     Stores session securely via HTTP-only cookies.
     """
     permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        # Return success to indicate endpoint is available (sets CSRF cookie)
+        return Response({'message': 'Login endpoint available'}, status=status.HTTP_200_OK)
 
     def post(self, request):
         username = request.data.get('username')
@@ -64,6 +83,12 @@ class LogoutView(APIView):
     Handles user logout by destroying the session.
     """
     permission_classes = (permissions.AllowAny,)
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    def get(self, request):
+        # Support GET for logout (sets CSRF cookie)
+        logout(request)
+        return Response({'success': 'Logged out successfully'}, status=status.HTTP_200_OK)
 
     def post(self, request):
         logout(request)
@@ -82,6 +107,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
 
 class TeamViewSet(viewsets.ModelViewSet):
@@ -93,11 +119,8 @@ class TeamViewSet(viewsets.ModelViewSet):
     serializer_class = TeamSerializer
     
     # Restricts access: Must be logged in, and only creators can update/delete
-    permission_classes = [permissions.IsAuthenticated, IsTeamCreatorOrReadOnly] 
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super().dispatch(*args, **kwargs) 
+    permission_classes = [permissions.IsAuthenticated, IsTeamCreatorOrReadOnly]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def perform_create(self, serializer):
         # Automatically links the logged-in user as the creator of the team
@@ -131,10 +154,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     """
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated] # Protects non-auth routes 
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super().dispatch(*args, **kwargs)
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def get_queryset(self):
         """
@@ -164,10 +184,7 @@ class ProfileView(APIView):
     PATCH: Updates the current user's display name (first_name) and email.
     """
     permission_classes = [permissions.IsAuthenticated]
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super().dispatch(*args, **kwargs)
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def get(self, request):
         user = request.user
@@ -200,6 +217,7 @@ class ChangePasswordView(APIView):
     Requires current_password and new_password in the request body.
     """
     permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
         user = request.user
