@@ -26,7 +26,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-r23a_l_*po@@z#4(8*k%5l(9qx7*=qmz$==721ml=&(u=3me9l'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+# Default to True for local (when DATABASE_URL is not set), False for production
+DEBUG = os.getenv('DEBUG', 'False') == 'True' or os.getenv('DATABASE_URL') is None
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.onrender.com', 'full-stack-development-assessment.onrender.com']
 
@@ -166,6 +167,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "https://full-stack-development-assessment.onrender.com",
+    "https://full-stack-development-assessment-ty8x.onrender.com",
 ]
 
 # ADD THIS TO TRUST REACT FOR POST REQUESTS
@@ -175,6 +177,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "https://full-stack-development-assessment.onrender.com",
+    "https://full-stack-development-assessment-ty8x.onrender.com",
 ]
 
 CORS_ALLOW_CREDENTIALS = True # Required for Session/Cookie-based auth 
