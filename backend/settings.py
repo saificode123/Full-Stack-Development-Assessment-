@@ -205,10 +205,16 @@ CSRF_COOKIE_PATH = '/'
 CSRF_COOKIE_DOMAIN = None  # Use None for localhost
 CSRF_USE_SESSIONS = False  # Store CSRF token in cookie instead of session
 
-# SameSite settings - Empty string disables SameSite for local development
-# For production with HTTPS, use appropriate settings
-SESSION_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SAMESITE = 'Lax'
+# Determine if we're in production (when DATABASE_URL is set)
+is_production = os.getenv('DATABASE_URL') is not None
+
+# SameSite settings - None for cross-origin (production), 'Lax' for local
+SESSION_COOKIE_SAMESITE = None if is_production else 'Lax'
+CSRF_COOKIE_SAMESITE = None if is_production else 'Lax'
+
+# Secure cookies - True for production (HTTPS), False for local
+SESSION_COOKIE_SECURE = is_production
+CSRF_COOKIE_SECURE = is_production
 
 # Allow cookies to be sent with cross-origin requests
 CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
@@ -216,5 +222,3 @@ CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
 
 # Production security settings
 SECURE_SSL_REDIRECT = False  # Set to True if using HTTPS load balancer
-SESSION_COOKIE_SECURE = False  # Set to True if using HTTPS
-CSRF_COOKIE_SECURE = False  # Set to True if using HTTPS
