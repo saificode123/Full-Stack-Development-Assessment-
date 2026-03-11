@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'core', 
 ]
 
+# Middleware configuration
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', # Add this at the very top
     'django.middleware.security.SecurityMiddleware',
