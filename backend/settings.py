@@ -2,7 +2,7 @@
 Django settings for backend project.
 """
 import os
-import dj_database_url  # ADDED: This parses your Neon link
+import dj_database_url  # Parses your Neon database link
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -12,12 +12,14 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
+# Uses environment variable on Render, falls back to local key
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-r23a_l_*po@@z#4(8*k%5l(9qx7*=qmz$==721ml=&(u=3me9l')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Reads from environment variable. Defaults to False for safety.
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-# ADDED: Allow Render to host your backend
+# Allow Render to host your backend
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.onrender.com']
 
 
@@ -66,17 +68,16 @@ TEMPLATES = [
 WSGI_APPLICATION = 'backend.wsgi.application'
 
 
-# ADDED: Dynamic Database Configuration
-# This uses the DATABASE_URL from your .env file or Render Environment Variables
+# Database Configuration
+# Uses the DATABASE_URL environment variable on Render (Neon Postgres)
+# Falls back to SQLite for local development if not found
 database_url = os.environ.get("DATABASE_URL")
 
 if database_url:
-    # Use Neon PostgreSQL on Render or if link is in .env
     DATABASES = {
         'default': dj_database_url.parse(database_url, conn_max_age=600)
     }
 else:
-    # Fall back to standard SQLite for easy local development without a .env file
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -127,7 +128,8 @@ REST_FRAMEWORK = {
     ),
 }
 
-# ADDED: CORS Configuration to include your deployed React app
+# CORS Configuration
+# Allow requests from your Frontend and Backend URLs
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -135,7 +137,8 @@ CORS_ALLOWED_ORIGINS = [
     "https://full-stack-development-assessment-frontend.onrender.com", 
 ]
 
-# ADDED: CSRF Trusted Origins for POST requests
+# CSRF Trusted Origins
+# Required for POST/PUT requests from the frontend
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -145,6 +148,22 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True 
 
-# Security Practices 
+# ==========================================
+# PRODUCTION SECURITY SETTINGS
+# ==========================================
+
+# Tells Django we are behind a proxy that uses HTTPS (Render uses HTTPS)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Cookies must be secure in production to work over HTTPS
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+else:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+
+# Prevent javascript access to session cookie (Security best practice)
 SESSION_COOKIE_HTTPONLY = True
+# CSRF cookie HttpOnly can be False (allows JS to read it for headers)
 CSRF_COOKIE_HTTPONLY = False
