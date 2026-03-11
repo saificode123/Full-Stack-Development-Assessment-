@@ -2,6 +2,9 @@ from django.contrib import admin
 from django.urls import path, include
 from django.db import connection
 from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from django.conf import settings
+from django.conf.urls.static import static
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 import os
@@ -35,13 +38,38 @@ def debug_db(request):
             'error': str(e)
         }, status=500)
 
-# Always use both /api/ and root URLs for flexibility
-# The frontend can use either depending on configuration
+@api_view(['GET'])
+def api_root(request):
+    """API root endpoint - returns API info"""
+    return JsonResponse({
+        'status': 'running',
+        'message': 'Team Task Manager API',
+        'endpoints': {
+            'auth': '/auth/',
+            'teams': '/teams/',
+            'tasks': '/tasks/',
+            'users': '/users/',
+            'profile': '/auth/profile/',
+        },
+        'docs': '/admin/'
+    })
+
+# URL configuration - support both /api/ prefix and root level URLs
+# This ensures compatibility with different frontend configurations
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('debug/db/', debug_db, name='debug_db'),
-    # Root URLs (for local development or direct access)
-    path('', include('core.urls')), 
-    # API prefix URLs (for production with separate frontend)
-    path('api/', include('core.urls')), 
+    
+    # Root URL - must come BEFORE include to catch exact /
+    path('', api_root, name='api_root'),
+    
+    # Include core URLs at root level (for production frontend)
+    path('', include('core.urls')),
+    
+    # Also include at /api/ prefix (for consistency)
+    path('api/', include('core.urls')),
 ]
+
+# Serve static files in production
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
