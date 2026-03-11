@@ -1,5 +1,7 @@
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.models import User
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.utils.decorators import method_decorator
 from rest_framework import viewsets, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -15,6 +17,7 @@ from .permissions import IsTeamCreatorOrReadOnly
 # AUTHENTICATION VIEWS
 # ==========================================
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class RegisterView(APIView):
     """
     Handles secure user registration.
@@ -30,6 +33,7 @@ class RegisterView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class LoginView(APIView):
     """
     Handles user login using Django's session authentication.
@@ -59,6 +63,8 @@ class LogoutView(APIView):
     """
     Handles user logout by destroying the session.
     """
+    permission_classes = (permissions.AllowAny,)
+
     def post(self, request):
         logout(request)
         return Response({'success': 'Logged out successfully'}, status=status.HTTP_200_OK)
@@ -138,3 +144,76 @@ class TaskViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(assigned_to_id=assignee_id)
             
         return queryset
+
+
+# ==========================================
+# SETTINGS VIEWS
+# ==========================================
+
+class ProfileView(APIView):
+    """
+    GET: Returns the current user's profile (username, email).
+    PATCH: Updates the current user's display name (first_name) and email.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        return Response({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+        })
+
+    def patch(self, request):
+        user = request.user
+        user.first_name = request.data.get('first_name', user.first_name)
+        user.last_name = request.data.get('last_name', user.last_name)
+        user.email = request.data.get('email', user.email)
+        user.save()
+        return Response({
+            'success': 'Profile updated successfully.',
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+        })
+
+
+class ChangePasswordView(APIView):
+    """
+    POST: Changes the current user's password.
+    Requires current_password and new_password in the request body.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+
+        if not current_password or not new_password:
+            return Response(
+                {'error': 'Both current_password and new_password are required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not user.check_password(current_password):
+            return Response(
+                {'error': 'Current password is incorrect.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if len(new_password) < 8:
+            return Response(
+                {'error': 'New password must be at least 8 characters long.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.set_password(new_password)
+        user.save()
+        # Keep the user logged in after password change
+        update_session_auth_hash(request, user)
+        return Response({'success': 'Password changed successfully.'})
