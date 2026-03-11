@@ -99,7 +99,7 @@ class TeamViewSet(viewsets.ModelViewSet):
         # Automatically links the logged-in user as the creator of the team
         serializer.save(creator=self.request.user)
 
-    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsTeamCreatorOrReadOnly])
     def invite_member(self, request, pk=None):
         """
         Bonus Feature: Stubbed email invite logic.
