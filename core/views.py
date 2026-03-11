@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.models import User
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework import viewsets, status, permissions
 from rest_framework.views import APIView
@@ -95,6 +95,10 @@ class TeamViewSet(viewsets.ModelViewSet):
     # Restricts access: Must be logged in, and only creators can update/delete
     permission_classes = [permissions.IsAuthenticated, IsTeamCreatorOrReadOnly] 
 
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs) 
+
     def perform_create(self, serializer):
         # Automatically links the logged-in user as the creator of the team
         serializer.save(creator=self.request.user)
@@ -128,6 +132,10 @@ class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated] # Protects non-auth routes 
 
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
     def get_queryset(self):
         """
         Optionally restricts the returned tasks,
@@ -156,6 +164,10 @@ class ProfileView(APIView):
     PATCH: Updates the current user's display name (first_name) and email.
     """
     permission_classes = [permissions.IsAuthenticated]
+
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
 
     def get(self, request):
         user = request.user
