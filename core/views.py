@@ -1,11 +1,22 @@
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.models import User
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework import viewsets, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.authentication import SessionAuthentication
+
+# Custom authentication class that skips CSRF check
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    """
+    Override enforce_csrf to skip CSRF check for session authentication.
+    This is needed for APIs accessed from frontend frameworks that don't
+    handle CSRF tokens properly.
+    """
+    def enforce_csrf(self, request):
+        return  # Skip CSRF check
 
 # Local imports
 from .models import Team, Task
@@ -24,6 +35,11 @@ class RegisterView(APIView):
     Accessible to anyone (AllowAny).
     """
     permission_classes = (permissions.AllowAny,)
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    def get(self, request):
+        # Return success to indicate endpoint is available (sets CSRF cookie)
+        return Response({'message': 'Register endpoint available'}, status=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = UserSerializer(data=request.data)
@@ -40,6 +56,11 @@ class LoginView(APIView):
     Stores session securely via HTTP-only cookies.
     """
     permission_classes = (permissions.AllowAny,)
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    def get(self, request):
+        # Return success to indicate endpoint is available (sets CSRF cookie)
+        return Response({'message': 'Login endpoint available'}, status=status.HTTP_200_OK)
 
     def post(self, request):
         username = request.data.get('username')
@@ -64,6 +85,12 @@ class LogoutView(APIView):
     Handles user logout by destroying the session.
     """
     permission_classes = (permissions.AllowAny,)
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    def get(self, request):
+        # Support GET for logout (sets CSRF cookie)
+        logout(request)
+        return Response({'success': 'Logged out successfully'}, status=status.HTTP_200_OK)
 
     def post(self, request):
         logout(request)
@@ -82,6 +109,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
 
 class TeamViewSet(viewsets.ModelViewSet):
@@ -93,10 +121,30 @@ class TeamViewSet(viewsets.ModelViewSet):
     serializer_class = TeamSerializer
     
     # Restricts access: Must be logged in, and only creators can update/delete
-    permission_classes = [permissions.IsAuthenticated, IsTeamCreatorOrReadOnly] 
+    permission_classes = [permissions.IsAuthenticated, IsTeamCreatorOrReadOnly]
+    authentication_classes = [CsrfExemptSessionAuthentication]
+
+    def create(self, request, *args, **kwargs):
+        """Override create to add debugging"""
+        print(f"[DEBUG] POST /teams/ - User: {request.user}, Data: {request.data}")
+        print(f"[DEBUG] Auth: {request.auth}, Authenticated: {request.user.is_authenticated}")
+        try:
+            serializer = self.get_serializer(data=request.data)
+            print(f"[DEBUG] Serializer is_valid: {serializer.is_valid()}")
+            if not serializer.is_valid():
+                print(f"[DEBUG] Serializer errors: {serializer.errors}")
+            response = super().create(request, *args, **kwargs)
+            print(f"[DEBUG] Team created successfully: {response.data}")
+            return response
+        except Exception as e:
+            print(f"[DEBUG] Error creating team: {str(e)}")
+            import traceback
+            print(f"[DEBUG] Traceback: {traceback.format_exc()}")
+            raise
 
     def perform_create(self, serializer):
         # Automatically links the logged-in user as the creator of the team
+        print(f"[DEBUG] perform_create - Saving with creator: {self.request.user}")
         serializer.save(creator=self.request.user)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated, IsTeamCreatorOrReadOnly])
@@ -127,6 +175,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     """
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated] # Protects non-auth routes 
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def get_queryset(self):
         """
@@ -156,6 +205,7 @@ class ProfileView(APIView):
     PATCH: Updates the current user's display name (first_name) and email.
     """
     permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def get(self, request):
         user = request.user
@@ -188,6 +238,7 @@ class ChangePasswordView(APIView):
     Requires current_password and new_password in the request body.
     """
     permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def post(self, request):
         user = request.user

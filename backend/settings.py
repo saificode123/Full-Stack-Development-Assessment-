@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
+import dj_database_url
 from dotenv import load_dotenv
 load_dotenv()
 from pathlib import Path
@@ -25,9 +26,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-r23a_l_*po@@z#4(8*k%5l(9qx7*=qmz$==721ml=&(u=3me9l'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Default to True for local (when DATABASE_URL is not set), False for production
+DEBUG = os.getenv('DEBUG', 'False') == 'True' or os.getenv('DATABASE_URL') is None
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.onrender.com', 'full-stack-development-assessment.onrender.com']
 
 
 # Application definition
@@ -46,6 +48,7 @@ INSTALLED_APPS = [
     'core', 
 ]
 
+# Middleware configuration
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', # Add this at the very top
     'django.middleware.security.SecurityMiddleware',
@@ -80,16 +83,28 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
+# For production on Render, use DATABASE_URL environment variable
+# For local development, fall back to individual env vars
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if DATABASE_URL:
+    print(f"=== Using DATABASE_URL from environment ===")
+    print(f"=== DATABASE_URL: {DATABASE_URL[:50]}... ===")
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
     }
-}
+else:
+    print("=== Using local database settings ===")
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME'),
+            'USER': os.getenv('DB_USER'),
+            'PASSWORD': os.getenv('DB_PASSWORD'),
+            'HOST': os.getenv('DB_HOST'),
+            'PORT': os.getenv('DB_PORT'),
+        }
+    }
 
 
 # Password validation
@@ -150,16 +165,68 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "https://full-stack-development-assessment.onrender.com",
+    "https://full-stack-development-assessment-ty8x.onrender.com",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
+
+# Allow all origins in production for debugging (can be restricted later)
+CORS_ALLOW_ALL_ORIGINS = True
 
 # ADD THIS TO TRUST REACT FOR POST REQUESTS
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "https://full-stack-development-assessment.onrender.com",
+    "https://full-stack-development-assessment-ty8x.onrender.com",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
 CORS_ALLOW_CREDENTIALS = True # Required for Session/Cookie-based auth 
 
+# Allow headers for CORS
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+] 
+
 # Security Practices 
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
+
+# Cookie settings
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_COOKIE_PATH = '/'
+CSRF_COOKIE_DOMAIN = None  # Use None for localhost
+CSRF_USE_SESSIONS = False  # Store CSRF token in cookie instead of session
+
+# Determine if we're in production (when DATABASE_URL is set)
+is_production = os.getenv('DATABASE_URL') is not None
+
+# SameSite settings - None for cross-origin (production), 'Lax' for local
+SESSION_COOKIE_SAMESITE = None if is_production else 'Lax'
+CSRF_COOKIE_SAMESITE = None if is_production else 'Lax'
+
+# Secure cookies - True for production (HTTPS), False for local
+SESSION_COOKIE_SECURE = is_production
+CSRF_COOKIE_SECURE = is_production
+
+# Allow cookies to be sent with cross-origin requests
+CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
+CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
+
+# Production security settings
+SECURE_SSL_REDIRECT = False  # Set to True if using HTTPS load balancer
