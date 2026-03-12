@@ -35,6 +35,7 @@ class RegisterView(APIView):
     Accessible to anyone (AllowAny).
     """
     permission_classes = (permissions.AllowAny,)
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def get(self, request):
         # Return success to indicate endpoint is available (sets CSRF cookie)
@@ -55,6 +56,7 @@ class LoginView(APIView):
     Stores session securely via HTTP-only cookies.
     """
     permission_classes = (permissions.AllowAny,)
+    authentication_classes = [CsrfExemptSessionAuthentication]
 
     def get(self, request):
         # Return success to indicate endpoint is available (sets CSRF cookie)
